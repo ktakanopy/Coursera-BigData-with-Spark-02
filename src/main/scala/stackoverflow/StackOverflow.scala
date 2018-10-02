@@ -9,6 +9,8 @@ import scala.reflect.ClassTag
 
 /** A raw stackoverflow posting, either a question or an answer */
 case class Posting(postingType: Int, id: Int, acceptedAnswer: Option[Int], parentId: Option[QID], score: Int, tags: Option[String]) extends Serializable
+case class Question(id: Int, acceptedAnswer: Option[Int], score: Int, tags: Option[String]) extends Serializable
+case class Answer(id: Int, parentId: Option[QID], score: Int, tags: Option[String]) extends Serializable
 
 
 /** The main class */
@@ -23,13 +25,15 @@ object StackOverflow extends StackOverflow {
     val lines   = sc.textFile("src/main/resources/stackoverflow/stackoverflow.csv")
     val raw     = rawPostings(lines)
     val grouped = groupedPostings(raw)
-    val scored  = scoredPostings(grouped)
-    val vectors = vectorPostings(scored)
+
+    grouped.collect().take(10).foreach(println)
+//    val scored  = scoredPostings(grouped)
+//    val vectors = vectorPostings(scored)
 //    assert(vectors.count() == 2121822, "Incorrect number of vectors: " + vectors.count())
 
-    val means   = kmeans(sampleVectors(vectors), vectors, debug = true)
-    val results = clusterResults(means, vectors)
-    printResults(results)
+//    val means   = kmeans(sampleVectors(vectors), vectors, debug = true)
+//    val results = clusterResults(means, vectors)
+//    printResults(results)
   }
 }
 
@@ -77,8 +81,14 @@ class StackOverflow extends Serializable {
 
 
   /** Group the questions and answers together */
-  def groupedPostings(postings: RDD[Posting]): RDD[(QID, Iterable[(Question, Answer)])] = {
-    ???
+  def groupedPostings(postings: RDD[Posting]): RDD[(Int, Iterable[(Question,Answer)])] = {
+
+    val questionsRDD = postings.filter(_.postingType == 1).map(post => ( post.id,  Question( post.id , post.acceptedAnswer , post.score, post.tags)))
+    val answerRDD = postings.filter(_.postingType == 2).map(post => ( post.parentId.get,  Answer(post.id,  post.parentId, post.score, post.tags)))
+
+    val joinedRDD =questionsRDD.join(answerRDD)
+
+    joinedRDD.groupByKey()
   }
 
 
