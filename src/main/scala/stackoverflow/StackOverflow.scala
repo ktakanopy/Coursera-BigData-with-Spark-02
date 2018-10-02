@@ -26,10 +26,10 @@ object StackOverflow extends StackOverflow {
     val raw     = rawPostings(lines)
     val grouped = groupedPostings(raw)
 
-    grouped.collect().take(10).foreach(println)
-//    val scored  = scoredPostings(grouped)
-//    val vectors = vectorPostings(scored)
-//    assert(vectors.count() == 2121822, "Incorrect number of vectors: " + vectors.count())
+    val scored  = scoredPostings(grouped)
+
+    val vectors = vectorPostings(scored)
+    assert(vectors.count() == 2121822, "Incorrect number of vectors: " + vectors.count())
 
 //    val means   = kmeans(sampleVectors(vectors), vectors, debug = true)
 //    val results = clusterResults(means, vectors)
@@ -107,7 +107,19 @@ class StackOverflow extends Serializable {
       highScore
     }
 
-    ???
+
+    grouped.map( elem =>  {
+
+      val answerQuestion = elem._2
+
+      val answersList = answerQuestion.toList.map(_._2)
+
+      val question = answerQuestion.toList.head._1
+
+      val highScoreV = answerHighScore(answersList.toArray)
+
+      (question, highScoreV)
+    })
   }
 
 
@@ -127,7 +139,13 @@ class StackOverflow extends Serializable {
       }
     }
 
-    ???
+    scored.map( elem =>  {
+        val question = elem._1
+        val score = elem._2
+
+          ( firstLangInTag( question.tags, langs).getOrElse(0) * langSpread , score)
+      }
+    )
   }
 
 
