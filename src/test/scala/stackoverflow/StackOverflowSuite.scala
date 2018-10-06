@@ -13,6 +13,8 @@ import java.io.File
 class StackOverflowSuite extends FunSuite with BeforeAndAfterAll {
 
 
+  @transient lazy val conf: SparkConf = new SparkConf().setMaster("local").setAppName("StackOverflow")
+  @transient lazy val sc: SparkContext = new SparkContext(conf)
   lazy val testObject = new StackOverflow {
     override val langs =
       List(
@@ -32,6 +34,46 @@ class StackOverflowSuite extends FunSuite with BeforeAndAfterAll {
       case _: Throwable => false
     }
     assert(instantiatable, "Can't instantiate a StackOverflow object")
+  }
+
+  test("clusterResults"){
+    val centers = Array((0,0), (100000, 0))
+    val rdd = sc.parallelize(List(
+      (0, 1000),
+      (0, 23),
+      (0, 234),
+      (0, 0),
+      (0, 1),
+      (0, 1),
+      (50000, 2),
+      (50000, 10),
+      (100000, 2),
+      (100000, 5),
+      (100000, 10),
+      (200000, 100)  ))
+    testObject.printResults(testObject.clusterResults(centers, rdd))
+  }
+
+  //it's based on Nicolas Bentayou's test case. thanks Nicolas Bentayou!
+
+  test("cluster") {
+
+    val vectors = sc.parallelize(List( (450000, 39),(500000, 31),(150000,1),(150000,10),(500000, 55),(150000,2) ,(150000,22)))
+
+    val means = Array((500000, 13),(150000,10))
+
+    var results: Array[(String, Double, Int, Int)] = testObject.clusterResults(means, vectors)
+
+    testObject.printResults(results)
+
+    println(results(0))
+
+    println(results(1))
+
+    assert(results.contains("Python", 100.0, 4, 6)) //I like python~!
+
+    assert(results.contains("Scala", 66.66666666666666, 3,39))
+
   }
 
 
