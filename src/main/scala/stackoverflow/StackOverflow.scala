@@ -83,7 +83,7 @@ class StackOverflow extends Serializable {
   def groupedPostings(postings: RDD[Posting]): RDD[(QID, Iterable[(Question,Answer)])] = {
 
     val questionsRDD = postings.filter(_.postingType == 1).map(post => ( post.id,  new Question(1, post.id , post.acceptedAnswer , post.parentId, post.score,  post.tags)))
-    val answerRDD = postings.filter(_.postingType == 2).map(post => ( post.parentId.get, new  Answer(2, post.id, post.acceptedAnswer,  post.parentId, post.score, post.tags)))
+    val answerRDD = postings.filter(_.postingType == 2).filter(_.parentId.isDefined).map(post => ( post.parentId.get, new  Answer(2, post.id, post.acceptedAnswer,  post.parentId, post.score, post.tags)))
 
     val joinedRDD = questionsRDD.join(answerRDD)
 
@@ -207,7 +207,6 @@ class StackOverflow extends Serializable {
 
     val groupedPointsByIndexCluster : RDD[(Int,(Int,Int))] = vectors.map( inputPoint => (findClosest(inputPoint, means ), inputPoint))
 
-
     val newClusterValues = groupedPointsByIndexCluster.groupByKey().map(
       groupedPoint => {
         val indexCluster = groupedPoint._1
@@ -323,32 +322,19 @@ class StackOverflow extends Serializable {
 
       val langsCentroidSorted = vs.toList.sortBy(_._2).reverse
 
-      val groupedCentroidList = vs.toList.groupBy(_._1)
-
-      val dominantLangIndex : Int  = groupedCentroidList.mapValues(_.size).maxBy(_._2)._1
+      val dominantLangIndex : Int  = vs.map(_._1).groupBy(identity).maxBy(_._2.size)._1
 
       val dominantLangLabel: String = langs(dominantLangIndex/ langSpread)  // most common language in the cluster
       val dominantLangList = langsCentroidSorted.filter( _._1 == dominantLangIndex )
-
       val numberOfDominantLabelInCentroid = dominantLangList.length
-
-      val medianInCentroid : Int = {
-        val midianList = langsCentroidSorted.length/2
-        midianList % 2 match {
-          case 1 =>
-            langsCentroidSorted (midianList)._2
-          case 0 =>
-            (
-              langsCentroidSorted (midianList)._2
-                +
-              langsCentroidSorted (midianList-1)._2
-            )/2
-        }
-      }
 
       val langPercent: Double = (numberOfDominantLabelInCentroid.toDouble / langsCentroidSorted.length) * 100.0d// percent of the questions in the most common language
       val clusterSize: Int    = vs.toList.length
-      val medianScore: Int    =  medianInCentroid
+
+      val sortedScores = vs.map(_._2).toList.sorted
+      val middle = clusterSize / 2 // rounds down 3/2 = 1 4/2 = 2 5/2 =2
+      val medianScore: Int = if(clusterSize % 2 == 0) (sortedScores(middle-1) + sortedScores(middle)) / 2 else sortedScores(middle)
+
 
       (dominantLangLabel, langPercent, clusterSize, medianScore)
     }
