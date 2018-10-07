@@ -325,9 +325,7 @@ class StackOverflow extends Serializable {
 
       val groupedCentroidList = vs.toList.groupBy(_._1)
 
-//      println("groupedCentroidList = " + groupedCentroidList.mkString(",") )
-
-      val dominantLangIndex = groupedCentroidList.map( elem => ( elem._1, elem._2.length) ).toList.sortBy(_._2).reverse.head._1
+      val dominantLangIndex : Int  = groupedCentroidList.mapValues(_.size).maxBy(_._2)._1
 
       val dominantLangLabel: String = langs(dominantLangIndex/ langSpread)  // most common language in the cluster
       val dominantLangList = langsCentroidSorted.filter( _._1 == dominantLangIndex )
@@ -348,9 +346,7 @@ class StackOverflow extends Serializable {
         }
       }
 
-      val highscoreDominantLangSum = vs.toList.filter(_._1 == dominantLangIndex).map(_._2).sum
-
-      val langPercent: Double = (numberOfDominantLabelInCentroid.toDouble / langsCentroidSorted.length) * 100// percent of the questions in the most common language
+      val langPercent: Double = (numberOfDominantLabelInCentroid.toDouble / langsCentroidSorted.length) * 100.0d// percent of the questions in the most common language
       val clusterSize: Int    = vs.toList.length
       val medianScore: Int    =  medianInCentroid
 
